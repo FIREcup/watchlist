@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request, url_for, redirect, flash
 from flask import render_template
 from flask_sqlalchemy import SQLAlchemy
 import os, sys
@@ -20,19 +20,60 @@ movies = [
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.root_path, 'data.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False # 关闭读模型修改的监控
+app.config['SECRET_KEY'] = "dev"
 db = SQLAlchemy(app)
 
 
 @app.route("/index")
 @app.route("/home")
-@app.route("/")
+@app.route("/", methods=['GET', 'POST'])
 def index():
+    if request.method == "POST":
+        title = request.form.get('title')
+        year = request.form.get('year')
+        if not title or not year or len(year) > 4 or len(title) > 60:
+            flash('Invalid Input.')
+            return redirect(url_for('index'))
+        movie = Movie(title=title, year=year)
+        db.session.add(movie)
+        db.session.commit()
+        flash('Item Created.')
+        return redirect(url_for('index'))
+    movies = Movie.query.all()
     return render_template('index.html', movies=movies)
 
 
 @app.route("/user/<name>")
 def user_page(name):
     return 'User: {}'.format(name)
+
+
+@app.route("/movie/edit/<int:movie_id>", methods=['GET', 'POST'])
+def edit(movie_id):
+    movie = Movie.query.get_or_404(movie_id)
+
+    if request.method == "POST":
+        title = request.form.get('title')
+        year = request.form.get('year')
+        if not title or not year or len(title) > 60 or len(year) > 4:
+            alert("Invalid Input")
+            return redirect(url_for('index'))
+        movie.title = title
+        movie.year = year
+        db.session.commit()
+        flash('Item Changed.')
+        return redirect(url_for('index'))
+    return render_template('edit.html', movie=movie)
+
+
+@app.route('/movie/delete/<int:movie_id>', methods=['POST'])
+def delete(movie_id):
+    movie = Movie.query.get_or_404(movie_id)
+    db.session.delete(movie)
+    db.session.commit()
+    flash('Item deleted.')
+    return redirect(url_for('index'))
+
 
 
 @app.errorhandler(404)

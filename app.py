@@ -82,7 +82,7 @@ def edit(movie_id):
         title = request.form.get('title')
         year = request.form.get('year')
         if not title or not year or len(title) > 60 or len(year) > 4:
-            alert("Invalid Input")
+            flash("Invalid Input")
             return redirect(url_for('index'))
         movie.title = title
         movie.year = year
